@@ -3,6 +3,7 @@ package com.example.cipher.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cipher.data.network.dto.ChatMessageDto
+import com.example.cipher.data.network.dto.UserPublicKeyDto
 import com.example.cipher.data.network.websocket.ChatWebSocketService
 import com.example.cipher.data.repository.CipherRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,17 +15,26 @@ data class ChatUiState(
     val messages: List<ChatMessageDto> = emptyList(),
     val isConnected: Boolean = false,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val publicKeys: List<UserPublicKeyDto> = emptyList(),
+    val isEncryptionEnabled: Boolean = false
 )
 
 class ChatViewModel(private val repository: CipherRepository) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
-    
-    init {
+      init {
         observeWebSocketConnection()
         observeIncomingMessages()
+        loadPublicKeys()
+    }
+    
+    private fun loadPublicKeys() {
+        viewModelScope.launch {
+            val keys = repository.getAllPublicKeys()
+            _uiState.value = _uiState.value.copy(publicKeys = keys)
+        }
     }
       private fun observeWebSocketConnection() {
         viewModelScope.launch {
@@ -64,22 +74,56 @@ class ChatViewModel(private val repository: CipherRepository) : ViewModel() {
             }
         }
     }
-    
-    fun sendMessage(content: String, username: String) {
+      fun sendMessage(content: String, username: String) {
         if (content.isBlank()) return
         
-        val message = ChatMessageDto(
-            content = content.trim(),
-            sender = username,
-            type = "TEXT"
-        )
+        viewModelScope.launch {
+            if (_uiState.value.isEncryptionEnabled) {
+                // Send encrypted message to all users with public keys
+                val publicKeys = _uiState.value.publicKeys
+                for (userKey in publicKeys) {
+                    if (userKey.username != username) { // Don't send to self
+                        repository.sendSecureMessage(content.trim(), userKey.username, userKey.publicKey)
+                    }
+                }
+            } else {
+                // Send regular message
+                val message = ChatMessageDto(
+                    content = content.trim(),
+                    sender = username,
+                    type = "TEXT"
+                )
+                repository.sendMessage(message)
+            }
+            
+            // Add message to local state immediately for better UX
+            val currentMessages = _uiState.value.messages.toMutableList()
+            currentMessages.add(ChatMessageDto(
+                content = content.trim(),
+                sender = username,
+                type = "TEXT"
+            ))
+            _uiState.value = _uiState.value.copy(messages = currentMessages)
+        }
+    }
+    
+    fun toggleEncryption() {
+        val newEncryptionState = !_uiState.value.isEncryptionEnabled
+        _uiState.value = _uiState.value.copy(isEncryptionEnabled = newEncryptionState)
         
-        repository.sendMessage(message)
-        
-        // Add message to local state immediately for better UX
-        val currentMessages = _uiState.value.messages.toMutableList()
-        currentMessages.add(message)
-        _uiState.value = _uiState.value.copy(messages = currentMessages)
+        if (newEncryptionState) {
+            // Send key exchange messages when enabling encryption
+            viewModelScope.launch {
+                val publicKeys = _uiState.value.publicKeys
+                for (userKey in publicKeys) {
+                    repository.sendKeyExchange(userKey.publicKey)
+                }
+            }
+        }
+    }
+    
+    fun getMyPublicKey(): String? {
+        return repository.getMyPublicKey()
     }
     
     fun clearMessages() {

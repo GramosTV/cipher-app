@@ -7,10 +7,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.cipher.data.network.ApiClient
-import com.example.cipher.data.network.dto.AuthResponseDto
-import com.example.cipher.data.network.dto.ChatMessageDto
-import com.example.cipher.data.network.dto.LoginRequestDto
-import com.example.cipher.data.network.dto.RegisterRequestDto
+import com.example.cipher.data.network.dto.*
+import com.example.cipher.util.EncryptionManager
 import com.example.cipher.data.network.dto.UserResponseDto
 import com.example.cipher.data.network.websocket.ChatWebSocketService
 import kotlinx.coroutines.flow.Flow
@@ -21,7 +19,10 @@ import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "cipher_prefs")
 
-class CipherRepository(private val context: Context) {
+class CipherRepository(
+    private val context: Context,
+    private val encryptionManager: EncryptionManager = EncryptionManager(context)
+) {
     
     private val json = Json { ignoreUnknownKeys = true }
     
@@ -91,11 +92,47 @@ class CipherRepository(private val context: Context) {
     fun observeWebSocketEvents(): Flow<ChatWebSocketService.WebSocketEvent> {
         return ApiClient.getChatWebSocketService().observeWebSocketEvents()
     }
-    
-    fun observeIncomingMessages(): Flow<ChatMessageDto?> {
+      fun observeIncomingMessages(): Flow<ChatMessageDto?> {
         return ApiClient.getChatWebSocketService().observeIncomingMessages().map { messageJson ->
             try {
-                json.decodeFromString<ChatMessageDto>(messageJson)
+                // Try to parse as different message types
+                val tempMap = json.decodeFromString<Map<String, Any>>(messageJson)
+                val messageType = tempMap["type"] as? String ?: "TEXT"
+                
+                when (messageType) {
+                    "SECURE" -> {
+                        // Decrypt secure message
+                        val secureMessage = json.decodeFromString<SecureMessageDto>(messageJson)
+                        val decryptedContent = encryptionManager.decryptMessage(secureMessage)
+                        if (decryptedContent != null) {
+                            ChatMessageDto(
+                                content = decryptedContent,
+                                sender = secureMessage.sender,
+                                type = "TEXT"
+                            )
+                        } else {
+                            ChatMessageDto(
+                                content = "[Failed to decrypt message]",
+                                sender = secureMessage.sender,
+                                type = "ERROR"
+                            )
+                        }
+                    }
+                    "KEY_EXCHANGE" -> {
+                        // Process key exchange
+                        val keyExchange = json.decodeFromString<KeyExchangeMessageDto>(messageJson)
+                        val success = encryptionManager.processKeyExchange(keyExchange)
+                        ChatMessageDto(
+                            content = if (success) "[Secure connection established]" else "[Key exchange failed]",
+                            sender = keyExchange.sender,
+                            type = "SYSTEM"
+                        )
+                    }
+                    else -> {
+                        // Regular message
+                        json.decodeFromString<ChatMessageDto>(messageJson)
+                    }
+                }
             } catch (e: Exception) {
                 null // Invalid JSON
             }
@@ -110,12 +147,68 @@ class CipherRepository(private val context: Context) {
             // Handle error
         }
     }
-    
-    // Initialize stored token on app start
+      // Initialize stored token on app start
     suspend fun initializeAuth() {
         val token = getStoredToken()
         if (token != null) {
             ApiClient.setAuthToken(token)
+        }
+        // Initialize encryption
+        encryptionManager.initialize()
+    }
+    
+    // Encryption methods
+    suspend fun getUserPublicKey(username: String): String? {
+        return try {
+            val response = ApiClient.userApiService.getUserPublicKey(username)
+            if (response.isSuccessful) {
+                response.body()?.publicKey
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
+    }
+    
+    suspend fun getAllPublicKeys(): List<UserPublicKeyDto> {
+        return try {
+            val response = ApiClient.userApiService.getAllPublicKeys()
+            if (response.isSuccessful) {
+                response.body() ?: emptyList()
+            } else {
+                emptyList()
+            }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+    
+    fun getMyPublicKey(): String? {
+        return encryptionManager.getPublicKey()
+    }
+    
+    fun sendSecureMessage(message: String, recipientUsername: String, recipientPublicKey: String) {
+        val secureMessage = encryptionManager.encryptMessage(message, recipientUsername, recipientPublicKey)
+        if (secureMessage != null) {
+            try {
+                val messageJson = json.encodeToString(secureMessage)
+                ApiClient.getChatWebSocketService().sendMessage(messageJson)
+            } catch (e: Exception) {
+                // Handle error
+            }
+        }
+    }
+    
+    fun sendKeyExchange(recipientPublicKey: String) {
+        val keyExchange = encryptionManager.createKeyExchangeMessage(recipientPublicKey)
+        if (keyExchange != null) {
+            try {
+                val messageJson = json.encodeToString(keyExchange)
+                ApiClient.getChatWebSocketService().sendMessage(messageJson)
+            } catch (e: Exception) {
+                // Handle error
+            }
         }
     }
 }

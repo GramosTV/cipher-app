@@ -20,6 +20,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,24 +71,55 @@ fun ChatScreen(
     
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
+            TopAppBar(                title = {
                     Column {
                         Text(
                             text = "🔐 CipherTalk",
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            text = if (chatUiState.isConnected) "Connected" else "Disconnected",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (chatUiState.isConnected) 
-                                MaterialTheme.colorScheme.primary 
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = if (chatUiState.isConnected) "Connected" else "Disconnected",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (chatUiState.isConnected) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.error
+                            )
+                            if (chatUiState.isEncryptionEnabled) {
+                                Text(
+                                    text = "🔒 E2E",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                },                actions = {
+                    // Encryption toggle button
+                    IconButton(
+                        onClick = { chatViewModel.toggleEncryption() }
+                    ) {
+                        Icon(
+                            imageVector = if (chatUiState.isEncryptionEnabled) 
+                                Icons.Default.Lock 
                             else 
-                                MaterialTheme.colorScheme.error
+                                Icons.Default.LockOpen,
+                            contentDescription = if (chatUiState.isEncryptionEnabled) 
+                                "Disable encryption" 
+                            else 
+                                "Enable encryption",
+                            tint = if (chatUiState.isEncryptionEnabled)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                },
-                actions = {
+                    
                     IconButton(
                         onClick = {
                             authViewModel.logout()
