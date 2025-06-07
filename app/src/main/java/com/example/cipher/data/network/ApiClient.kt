@@ -3,6 +3,8 @@ package com.example.cipher.data.network
 import android.app.Application
 import com.example.cipher.BuildConfig
 import com.example.cipher.data.network.api.AuthApiService
+import com.example.cipher.data.network.api.CallApiService
+import com.example.cipher.data.network.api.ContactApiService
 import com.example.cipher.data.network.api.UserApiService
 import com.example.cipher.data.network.websocket.ChatWebSocketService
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
@@ -76,7 +78,8 @@ object ApiClient {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
     }
-      // API services
+    
+    // API services
     val authApiService: AuthApiService by lazy {
         retrofit.create(AuthApiService::class.java)
     }
@@ -84,7 +87,16 @@ object ApiClient {
     val userApiService: UserApiService by lazy {
         retrofit.create(UserApiService::class.java)
     }
-      // WebSocket setup
+    
+    val contactApiService: ContactApiService by lazy {
+        retrofit.create(ContactApiService::class.java)
+    }
+    
+    val callApiService: CallApiService by lazy {
+        retrofit.create(CallApiService::class.java)
+    }
+    
+    // WebSocket setup
     private var chatWebSocketService: ChatWebSocketService? = null
     
     fun initializeWebSocket(application: Application) {

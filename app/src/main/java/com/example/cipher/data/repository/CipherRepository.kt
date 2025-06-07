@@ -6,6 +6,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.cipher.data.model.Call
+import com.example.cipher.data.model.CallStatus
+import com.example.cipher.data.model.Contact
+import com.example.cipher.data.model.ContactStatus
 import com.example.cipher.data.network.ApiClient
 import com.example.cipher.data.network.dto.*
 import com.example.cipher.util.EncryptionManager
@@ -217,6 +221,266 @@ class CipherRepository(
             } catch (e: Exception) {
                 // Handle error
             }
+        }
+    }
+    
+    // Contact methods
+    suspend fun sendContactRequest(targetUsername: String): Result<Contact> {
+        return try {
+            val request = ContactRequestDto(targetUsername)
+            val response = ApiClient.contactApiService.sendContactRequest(request)
+            val contact = Contact(
+                id = response.id,
+                username = response.username,
+                displayName = response.displayName,
+                status = ContactStatus.valueOf(response.status),
+                createdAt = response.createdAt
+            )
+            Result.success(contact)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+      suspend fun getContacts(): Result<List<Contact>> {
+        return try {
+            val response = ApiClient.contactApiService.getContacts()
+            val contacts = response.contacts.map { dto ->
+                Contact(
+                    id = dto.id,
+                    username = dto.username,
+                    displayName = dto.displayName,
+                    status = ContactStatus.valueOf(dto.status),
+                    createdAt = dto.createdAt
+                )
+            }
+            Result.success(contacts)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+      suspend fun getPendingContactRequests(): Result<List<Contact>> {
+        return try {
+            val response = ApiClient.contactApiService.getPendingRequests()
+            val contacts = response.contacts.map { dto ->
+                Contact(
+                    id = dto.id,
+                    username = dto.username,
+                    displayName = dto.displayName,
+                    status = ContactStatus.valueOf(dto.status),
+                    createdAt = dto.createdAt
+                )
+            }
+            Result.success(contacts)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun acceptContactRequest(contactId: Long): Result<Contact> {
+        return try {
+            val action = ContactActionDto(contactId, "ACCEPT")
+            val response = ApiClient.contactApiService.handleContactAction(action)
+            val contact = Contact(
+                id = response.id,
+                username = response.username,
+                displayName = response.displayName,
+                status = ContactStatus.valueOf(response.status),
+                createdAt = response.createdAt
+            )
+            Result.success(contact)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun rejectContactRequest(contactId: Long): Result<Contact> {
+        return try {
+            val action = ContactActionDto(contactId, "REJECT")
+            val response = ApiClient.contactApiService.handleContactAction(action)
+            val contact = Contact(
+                id = response.id,
+                username = response.username,
+                displayName = response.displayName,
+                status = ContactStatus.valueOf(response.status),
+                createdAt = response.createdAt
+            )
+            Result.success(contact)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun blockContact(contactId: Long): Result<Contact> {
+        return try {
+            val action = ContactActionDto(contactId, "BLOCK")
+            val response = ApiClient.contactApiService.handleContactAction(action)
+            val contact = Contact(
+                id = response.id,
+                username = response.username,
+                displayName = response.displayName,
+                status = ContactStatus.valueOf(response.status),
+                createdAt = response.createdAt
+            )
+            Result.success(contact)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun deleteContact(contactId: Long): Result<Unit> {
+        return try {
+            ApiClient.contactApiService.deleteContact(contactId)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateContactDisplayName(contactId: Long, displayName: String): Result<Contact> {
+        return try {
+            val body = mapOf("displayName" to displayName)
+            val response = ApiClient.contactApiService.updateDisplayName(contactId, body)
+            val contact = Contact(
+                id = response.id,
+                username = response.username,
+                displayName = response.displayName,
+                status = ContactStatus.valueOf(response.status),
+                createdAt = response.createdAt
+            )
+            Result.success(contact)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    // Call methods
+    suspend fun initiateCall(calleeUsername: String, noiseReductionEnabled: Boolean = false): Result<Call> {
+        return try {
+            val request = InitiateCallDto(calleeUsername, noiseReductionEnabled)
+            val response = ApiClient.callApiService.initiateCall(request)
+            val call = Call(
+                id = response.id,
+                caller = response.caller,
+                callee = response.callee,
+                status = CallStatus.valueOf(response.status),
+                noiseReductionEnabled = response.noiseReductionEnabled,
+                createdAt = response.createdAt,
+                startedAt = response.startedAt,
+                endedAt = response.endedAt
+            )
+            Result.success(call)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun answerCall(callId: Long): Result<Call> {
+        return try {
+            val action = CallActionDto(callId, "ANSWER")
+            val response = ApiClient.callApiService.handleCallAction(action)
+            val call = Call(
+                id = response.id,
+                caller = response.caller,
+                callee = response.callee,
+                status = CallStatus.valueOf(response.status),
+                noiseReductionEnabled = response.noiseReductionEnabled,
+                createdAt = response.createdAt,
+                startedAt = response.startedAt,
+                endedAt = response.endedAt
+            )
+            Result.success(call)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun endCall(callId: Long): Result<Call> {
+        return try {
+            val action = CallActionDto(callId, "END")
+            val response = ApiClient.callApiService.handleCallAction(action)
+            val call = Call(
+                id = response.id,
+                caller = response.caller,
+                callee = response.callee,
+                status = CallStatus.valueOf(response.status),
+                noiseReductionEnabled = response.noiseReductionEnabled,
+                createdAt = response.createdAt,
+                startedAt = response.startedAt,
+                endedAt = response.endedAt
+            )
+            Result.success(call)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun declineCall(callId: Long): Result<Call> {
+        return try {
+            val action = CallActionDto(callId, "DECLINE")
+            val response = ApiClient.callApiService.handleCallAction(action)
+            val call = Call(
+                id = response.id,
+                caller = response.caller,
+                callee = response.callee,
+                status = CallStatus.valueOf(response.status),
+                noiseReductionEnabled = response.noiseReductionEnabled,
+                createdAt = response.createdAt,
+                startedAt = response.startedAt,
+                endedAt = response.endedAt
+            )
+            Result.success(call)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+      suspend fun getActiveCalls(): Result<List<Call>> {
+        return try {
+            val response = ApiClient.callApiService.getActiveCalls()
+            val calls = response.activeCalls.map { dto ->
+                Call(
+                    id = dto.id,
+                    caller = dto.caller,
+                    callee = dto.callee,
+                    status = CallStatus.valueOf(dto.status),
+                    noiseReductionEnabled = dto.noiseReductionEnabled,
+                    createdAt = dto.createdAt,
+                    startedAt = dto.startedAt,
+                    endedAt = dto.endedAt
+                )
+            }
+            Result.success(calls)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+      suspend fun getCallHistory(): Result<List<Call>> {
+        return try {
+            val response = ApiClient.callApiService.getCallHistory()
+            val calls = response.map { dto ->
+                Call(
+                    id = dto.id,
+                    caller = dto.caller,
+                    callee = dto.callee,
+                    status = CallStatus.valueOf(dto.status),
+                    noiseReductionEnabled = dto.noiseReductionEnabled,
+                    createdAt = dto.createdAt,
+                    startedAt = dto.startedAt,
+                    endedAt = dto.endedAt
+                )
+            }
+            Result.success(calls)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun sendCallSignal(callId: Long, type: String, signal: String): Result<Unit> {
+        return try {
+            val signalDto = CallSignalingDto(callId, type, signal)
+            ApiClient.callApiService.sendCallSignal(signalDto)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 }

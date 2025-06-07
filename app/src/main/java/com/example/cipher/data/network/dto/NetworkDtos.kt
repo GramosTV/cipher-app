@@ -75,3 +75,67 @@ data class UserPublicKeyDto(
     val username: String,
     val publicKey: String
 )
+
+// Contact DTOs
+@Serializable
+data class ContactRequestDto(
+    val targetUsername: String
+)
+
+@Serializable
+data class ContactResponseDto(
+    val id: Long,
+    val username: String,
+    val displayName: String,
+    val status: String,
+    val createdAt: String
+)
+
+@Serializable
+data class ContactActionDto(
+    val contactId: Long,
+    val action: String // ACCEPT, REJECT, BLOCK, UNBLOCK
+)
+
+@Serializable
+data class ContactListDto(
+    val contacts: List<ContactResponseDto>
+)
+
+// Call DTOs
+@Serializable
+data class InitiateCallDto(
+    val calleeUsername: String,
+    val noiseReductionEnabled: Boolean = false
+)
+
+@Serializable
+data class CallResponseDto(
+    val id: Long,
+    val caller: String,
+    val callee: String,
+    val status: String,
+    val noiseReductionEnabled: Boolean,
+    val createdAt: String,
+    val startedAt: String? = null,
+    val endedAt: String? = null
+)
+
+@Serializable
+data class CallActionDto(
+    val callId: Long,
+    val action: String // ANSWER, END, DECLINE
+)
+
+@Serializable
+data class CallSignalingDto(
+    val callId: Long,
+    val type: String, // OFFER, ANSWER, ICE_CANDIDATE, CALL_SIGNAL
+    val signal: String,
+    val sender: String? = null
+)
+
+@Serializable
+data class ActiveCallsDto(
+    val activeCalls: List<CallResponseDto>
+)

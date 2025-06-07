@@ -12,13 +12,17 @@ import com.example.cipher.data.repository.CipherRepository
 import com.example.cipher.ui.navigation.CipherTalkNavigation
 import com.example.cipher.ui.theme.CipherTheme
 import com.example.cipher.ui.viewmodel.AuthViewModel
+import com.example.cipher.ui.viewmodel.CallViewModel
 import com.example.cipher.ui.viewmodel.ChatViewModel
+import com.example.cipher.ui.viewmodel.ContactViewModel
 
 class MainActivity : ComponentActivity() {
     
     private lateinit var repository: CipherRepository
     private lateinit var authViewModel: AuthViewModel
     private lateinit var chatViewModel: ChatViewModel
+    private lateinit var contactViewModel: ContactViewModel
+    private lateinit var callViewModel: CallViewModel
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,6 +32,8 @@ class MainActivity : ComponentActivity() {
         repository = CipherRepository(this)
         authViewModel = AuthViewModel(repository)
         chatViewModel = ChatViewModel(repository)
+        contactViewModel = ContactViewModel(repository)
+        callViewModel = CallViewModel(repository)
         
         setContent {
             CipherTheme {
@@ -37,7 +43,9 @@ class MainActivity : ComponentActivity() {
                 ) {
                     CipherTalkNavigation(
                         authViewModel = authViewModel,
-                        chatViewModel = chatViewModel
+                        chatViewModel = chatViewModel,
+                        contactViewModel = contactViewModel,
+                        callViewModel = callViewModel
                     )
                 }
             }
