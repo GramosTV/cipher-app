@@ -89,6 +89,14 @@ class CipherRepository(
         preferences[TOKEN_KEY] != null
     }
       // Chat methods
+    fun connectToWebSocket() {
+        ApiClient.getChatWebSocketService().connect()
+    }
+    
+    fun disconnectFromWebSocket() {
+        ApiClient.getChatWebSocketService().disconnect()
+    }
+    
     fun observeWebSocketEvents(): Flow<ChatWebSocketService.WebSocketEvent> {
         return ApiClient.getChatWebSocketService().observeWebSocketEvents()
     }

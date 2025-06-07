@@ -20,8 +20,7 @@ class AuthViewModel(private val repository: CipherRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
     
-    init {
-        // Check if user is already logged in
+    init {        // Check if user is already logged in
         viewModelScope.launch {
             repository.initializeAuth()
             repository.isLoggedIn.collect { isLoggedIn ->
@@ -31,6 +30,8 @@ class AuthViewModel(private val repository: CipherRepository) : ViewModel() {
                         isLoggedIn = true,
                         username = username
                     )
+                    // Connect to WebSocket if already logged in
+                    repository.connectToWebSocket()
                 }
             }
         }
@@ -39,14 +40,15 @@ class AuthViewModel(private val repository: CipherRepository) : ViewModel() {
     fun login(username: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            
-            repository.login(username, password)
+              repository.login(username, password)
                 .onSuccess { response ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         isLoggedIn = true,
                         username = response.username
                     )
+                    // Connect to WebSocket after successful login
+                    repository.connectToWebSocket()
                 }
                 .onFailure { error ->
                     _uiState.value = _uiState.value.copy(
@@ -74,9 +76,9 @@ class AuthViewModel(private val repository: CipherRepository) : ViewModel() {
                 }
         }
     }
-    
-    fun logout() {
+      fun logout() {
         viewModelScope.launch {
+            repository.disconnectFromWebSocket()
             repository.logout()
             _uiState.value = AuthUiState() // Reset to initial state
         }

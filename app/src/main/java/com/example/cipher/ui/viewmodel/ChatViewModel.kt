@@ -21,13 +21,18 @@ data class ChatUiState(
 )
 
 class ChatViewModel(private val repository: CipherRepository) : ViewModel() {
-    
-    private val _uiState = MutableStateFlow(ChatUiState())
+      private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
-      init {
+    
+    init {
         observeWebSocketConnection()
         observeIncomingMessages()
         loadPublicKeys()
+        
+        // Ensure WebSocket connection is established
+        viewModelScope.launch {
+            repository.connectToWebSocket()
+        }
     }
     
     private fun loadPublicKeys() {
